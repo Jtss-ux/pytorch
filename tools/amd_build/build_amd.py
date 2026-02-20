@@ -225,8 +225,8 @@ mslk_dir = REPO_ROOT / "third_party/mslk/include/mslk/utils/"
 
 if not buck_build:
     mslk_original = mslk_dir / "tuning_cache.cuh"
-
-    extra_files.append(mslk_original.as_posix())
+    if mslk_original.exists():
+        extra_files.append(mslk_original.as_posix())
 
 # TODO Remove once the following submodules are updated to use hipify v2
 hipify_v1_to_v2_files = [
@@ -297,20 +297,21 @@ if not buck_build:
     mslk_move_src = mslk_dir / "hip/tuning_cache.cuh"
     mslk_move_dst = mslk_dir / "tuning_cache_hip.cuh"
 
-    # only update the file if it changes or doesn't exist
-    do_write = True
-    src_lines = None
-    with open(mslk_move_src) as src:
-        src_lines = src.readlines()
-    if os.path.exists(mslk_move_dst):
-        dst_lines = None
-        with open(mslk_move_dst) as dst:
-            dst_lines = dst.readlines()
-        if src_lines == dst_lines:
-            print(f"{mslk_move_dst} skipped")
-            do_write = False
-    if do_write:
-        with open(mslk_move_dst, "w") as dst:
-            for line in src_lines:
-                dst.write(line)
-        print(f"{mslk_move_dst} updated")
+    if mslk_move_src.exists():
+        # only update the file if it changes or doesn't exist
+        do_write = True
+        src_lines = None
+        with open(mslk_move_src) as src:
+            src_lines = src.readlines()
+        if os.path.exists(mslk_move_dst):
+            dst_lines = None
+            with open(mslk_move_dst) as dst:
+                dst_lines = dst.readlines()
+            if src_lines == dst_lines:
+                print(f"{mslk_move_dst} skipped")
+                do_write = False
+        if do_write:
+            with open(mslk_move_dst, "w") as dst:
+                for line in src_lines:
+                    dst.write(line)
+            print(f"{mslk_move_dst} updated")

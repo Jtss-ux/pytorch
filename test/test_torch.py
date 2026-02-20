@@ -2511,7 +2511,6 @@ class TestTorchDeviceType(TestCase):
                         self.assertEqual(x1.grad, x2.grad, rtol=0, atol=0.001)
                         self.assertEqual(y1.grad, y2.grad, rtol=0, atol=0.001)
 
-    @skipIfRocmArch(MI300_ARCH)
     @tf32_on_and_off(0.005)
     @reduced_f32_on_and_off(0.08)
     def test_cdist_large(self, device):
@@ -2520,7 +2519,10 @@ class TestTorchDeviceType(TestCase):
             y = torch.randn(1000, 10, device=device)
             actual = torch.cdist(x, y, p=2, compute_mode=cm)
             expected = self._brute_cdist(x, y, p=2)
-            self.assertEqual(expected, actual)
+            if TEST_WITH_ROCM:
+                self.assertEqual(expected, actual, atol=1e-4, rtol=1e-4)
+            else:
+                self.assertEqual(expected, actual)
 
     @slowTest
     @tf32_on_and_off(0.01)
@@ -2531,7 +2533,10 @@ class TestTorchDeviceType(TestCase):
             y = torch.randn(4, 3, 1000, 10, device=device)
             actual = torch.cdist(x, y, p=2, compute_mode=cm)
             expected = self._brute_cdist(x, y, p=2)
-            self.assertEqual(expected, actual)
+            if TEST_WITH_ROCM:
+                self.assertEqual(expected, actual, atol=1e-3, rtol=1e-3)
+            else:
+                self.assertEqual(expected, actual)
 
     @tf32_on_and_off(0.005)
     @reduced_f32_on_and_off(0.04)
@@ -4083,7 +4088,6 @@ class TestTorchDeviceType(TestCase):
 
     # FIXME: find a test suite for the pdist operator
     @unittest.skipIf(IS_FBCODE and IS_REMOTE_GPU, "sandcastle OOM with current tpx gpu/re configuration")
-    @skipIfRocm
     @onlyCUDA
     @largeTensorTest('32GB', device='cpu')
     @largeTensorTest('5GB', device='cuda')
@@ -4096,7 +4100,11 @@ class TestTorchDeviceType(TestCase):
         expected_cpu = torch.pdist(x, p=2)                  # ~1250M * 4 bytes = 5 GB on CPU
         actual_cpu = torch.pdist(x.to(device), p=2).cpu()         # 5 GB on GPU + 5GB on CPU
         # Workaround for large memory overhead of self.assertTrue (see #84944)
-        self.assertTrue(torch.allclose(expected_cpu, actual_cpu))  # ~20GB in allclose
+        # Use relaxed tolerance for ROCm TF32 precision differences
+        if TEST_WITH_ROCM:
+            self.assertTrue(torch.allclose(expected_cpu, actual_cpu, atol=1e-3, rtol=1e-3))
+        else:
+            self.assertTrue(torch.allclose(expected_cpu, actual_cpu))  # ~20GB in allclose
 
     # FIXME: move to elementwise ternary test suite
     @onlyNativeDeviceTypes

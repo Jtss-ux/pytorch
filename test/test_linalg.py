@@ -764,7 +764,6 @@ class TestLinalg(TestCase):
             cholesky_test_helper(3, batchsize, upper)
 
     @precisionOverride({torch.float32: 1e-4, torch.complex64: 1e-4})
-    @skipIfRocmArch(MI300_ARCH)
     @skipCUDAIfNoCusolver
     @skipCPUIfNoLapack
     @dtypes(*floating_and_complex_types())
@@ -775,20 +774,23 @@ class TestLinalg(TestCase):
 
         A = random_hermitian_pd_matrix(10, dtype=dtype, device=device)
 
+        # Use looser tolerance for ROCm TF32
+        atol = 1e-4 if TEST_WITH_ROCM else 1e-14
+
         # default Case
         C = torch.cholesky(A)
         B = torch.mm(C, C.t().conj())
-        self.assertEqual(A, B, atol=1e-14, rtol=0)
+        self.assertEqual(A, B, atol=atol, rtol=0)
 
         # test Upper Triangular
         U = torch.cholesky(A, True)
         B = torch.mm(U.t().conj(), U)
-        self.assertEqual(A, B, atol=1e-14, rtol=0, msg='cholesky (upper) did not allow rebuilding the original matrix')
+        self.assertEqual(A, B, atol=atol, rtol=0, msg='cholesky (upper) did not allow rebuilding the original matrix')
 
         # test Lower Triangular
         L = torch.cholesky(A, False)
         B = torch.mm(L, L.t().conj())
-        self.assertEqual(A, B, atol=1e-14, rtol=0, msg='cholesky (lower) did not allow rebuilding the original matrix')
+        self.assertEqual(A, B, atol=atol, rtol=0, msg='cholesky (lower) did not allow rebuilding the original matrix')
 
     @skipCUDAIfNoCusolver
     @skipCPUIfNoLapack
